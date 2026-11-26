@@ -1,0 +1,101 @@
+/* PhishGuard AI on-page color alert styles (scoped with pg- prefix to avoid page collisions) */
+.pg-flagged-high {
+  outline: 2px solid #ef4444 !important;
+  outline-offset: 4px !important;
+  background-color: rgba(239, 68, 68, 0.06) !important;
+  border-radius: 8px !important;
+}
+
+.pg-flagged-caution {
+  outline: 2px solid #f59e0b !important;
+  outline-offset: 4px !important;
+  background-color: rgba(245, 158, 11, 0.06) !important;
+  border-radius: 8px !important;
+}
+
+.pg-alert-banner {
+  all: initial;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 8px 12px;
+  margin: 0 0 8px 0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(2, 6, 23, 0.18);
+  z-index: 2147483640;
+}
+
+.pg-alert-banner.pg-high {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+.pg-alert-banner.pg-caution {
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.pg-alert-badge {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.pg-high .pg-alert-badge { background: #dc2626; }
+.pg-caution .pg-alert-badge { background: #d97706; }
+
+.pg-alert-text {
+  flex: 1;
+  font-weight: 500;
+}
+
+.pg-alert-dismiss {
+  all: unset;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  opacity: 0.75;
+}
+.pg-alert-dismiss:hover { opacity: 1; background: rgba(0, 0, 0, 0.08); }
+
+.pg-floating-pill {
+  all: initial;
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 9999px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #f8fafc;
+  background: #0f172a;
+  border: 1px solid rgba(59, 130, 246, 0.45);
+  box-shadow: 0 8px 24px rgba(2, 6, 23, 0.35);
+}
+
+.pg-pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #10b981;
+}
+.pg-floating-pill.pg-has-high .pg-pill-dot { background: #ef4444; }
+.pg-floating-pill.pg-has-caution .pg-pill-dot { background: #f59e0b; }

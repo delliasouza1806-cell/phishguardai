@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PhishGuard AI — Risk Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="bg-navy text-slate-200 p-6">
+  <div class="max-w-dash flex flex-col gap-4">
+    <!-- Top Bar -->
+    <header class="flex items-center justify-between p-4 rounded-xl bg-card border">
+      <div class="flex items-center gap-3">
+        <img src="icons/icon48.png" alt="PhishGuard AI" class="w-8 h-8 rounded-lg" />
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-bold text-white" style="margin:0;">PhishGuard AI · Risk Dashboard</h1>
+            <span class="badge bg-blue-500/15 text-blue-300 border border-blue-500/30">Privacy-First</span>
+          </div>
+          <p class="text-xs text-slate-400" style="margin:0;">
+            Real-time social engineering alerts &amp; redacted threat telemetry (zero credentials stored)
+          </p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="export-btn" type="button" class="btn btn-ghost px-3 py-2 text-xs">Export JSON</button>
+        <button id="refresh-btn" type="button" class="btn btn-primary px-3 py-2 text-xs">Refresh</button>
+        <button id="clear-btn" type="button" class="btn btn-ghost px-3 py-2 text-xs">Clear Logs</button>
+      </div>
+    </header>
+
+    <!-- Status Notice -->
+    <div id="dash-error" class="hidden p-3 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs"></div>
+
+    <!-- KPI Cards -->
+    <section class="grid grid-cols-4 gap-3">
+      <div class="p-4 rounded-xl bg-card border">
+        <div class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Total Scans</div>
+        <div id="stat-total" class="text-3xl font-bold text-white mt-1">0</div>
+      </div>
+      <div class="p-4 rounded-xl bg-card border border-rose-500/30">
+        <div class="text-xs uppercase tracking-wider text-rose-300 font-semibold">High Risk</div>
+        <div id="stat-high" class="text-3xl font-bold text-rose-400 mt-1">0</div>
+      </div>
+      <div class="p-4 rounded-xl bg-card border border-amber-500/30">
+        <div class="text-xs uppercase tracking-wider text-amber-300 font-semibold">Caution</div>
+        <div id="stat-caution" class="text-3xl font-bold text-amber-400 mt-1">0</div>
+      </div>
+      <div class="p-4 rounded-xl bg-card border border-blue-500/30">
+        <div class="text-xs uppercase tracking-wider text-blue-300 font-semibold">Avg Risk Score</div>
+        <div id="stat-avg" class="text-3xl font-bold text-blue-400 mt-1">0</div>
+      </div>
+    </section>
+
+    <!-- Recent Reports Table / Feed -->
+    <section class="p-4 rounded-xl bg-card border flex flex-col gap-3">
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h2 class="text-base font-bold text-white" style="margin:0;">Recent Threat Reports &amp; Alerts</h2>
+          <p class="text-xs text-slate-400" style="margin:0;">
+            Emails, long account digits, and URL query tokens are masked prior to display.
+          </p>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button class="btn btn-primary px-2.5 py-1 text-xs filter-btn" data-filter="all" type="button">All</button>
+          <button class="btn btn-ghost px-2.5 py-1 text-xs filter-btn" data-filter="high_risk" type="button">High Risk</button>
+          <button class="btn btn-ghost px-2.5 py-1 text-xs filter-btn" data-filter="caution" type="button">Caution</button>
+          <button class="btn btn-ghost px-2.5 py-1 text-xs filter-btn" data-filter="safe" type="button">Safe</button>
+          <span id="last-updated" class="text-xs text-slate-400 font-mono" style="margin-left:8px;"></span>
+        </div>
+      </div>
+
+      <div id="reports-container" class="flex flex-col gap-2"></div>
+    </section>
+  </div>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>
