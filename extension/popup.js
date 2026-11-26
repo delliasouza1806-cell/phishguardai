@@ -1,4 +1,4 @@
-const API_BASE = "http://127.0.0.1:5500";
+const API_BASE = "http://127.0.0.1:8000";
 
 const SAMPLE_PHISH = `Subject: Urgent Action Required: Invoice #INV-8942 Wire Update
 
