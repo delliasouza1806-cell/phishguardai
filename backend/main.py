@@ -4,6 +4,7 @@ from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,7 +20,7 @@ app = FastAPI(
     version="1.1.0",
 )
 
-# Enable CORS so Chrome extensions (chrome-extension://...) and web pages can call the local trust layer.
+# Enable CORS so Chrome extensions (chrome-extension://...) and web pages can call the trust layer.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -28,15 +29,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Privacy-first in-memory ring buffer storing only redacted scan metadata for the risk dashboard.
 RECENT_REPORTS: deque[dict] = deque(maxlen=50)
 DEMO_INBOX_PATH = Path(__file__).resolve().parent.parent / "demo" / "mock_inbox.html"
 
 
 class ScanRequest(BaseModel):
-    text: str = Field(..., min_length=1, max_length=20000, description="On-page or selected message text to inspect")
-    source_url: str | None = Field(default=None, description="Optional active tab URL for domain mismatch checks")
-    channel: str | None = Field(default="popup", description="Scan origin (popup, content_script, web-console, context-menu)")
+    text: str = Field(..., min_length=1, max_length=20000)
+    source_url: str | None = Field(default=None)
+    channel: str | None = Field(default="popup")
 
 
 class SignalOut(BaseModel):
@@ -89,38 +89,25 @@ class BatchScanResult(BaseModel):
     matched_phrases: list[str] = Field(default_factory=list)
 
 
-def _record_report(
-    result_score: int,
-    verdict: str,
-    attack_vector: str,
-    breakdown: dict[str, int],
-    signals_count: int,
-    top_signal: str | None,
-    redacted_preview: str,
-    text_hash: str,
-    source_url: str | None,
-    channel: str | None,
-    scanned_at: str,
-) -> None:
+def _record_report(result_score, verdict, attack_vector, breakdown, signals_count,
+                   top_signal, redacted_preview, text_hash, source_url, channel, scanned_at):
     host = urlparse(source_url).hostname if source_url else None
     if RECENT_REPORTS and RECENT_REPORTS[0]["text_hash"] == text_hash and RECENT_REPORTS[0]["channel"] == channel:
         return
-    RECENT_REPORTS.appendleft(
-        {
-            "id": f"{text_hash}-{len(RECENT_REPORTS) + 1}",
-            "text_hash": text_hash,
-            "risk_score": result_score,
-            "verdict": verdict,
-            "attack_vector": attack_vector,
-            "breakdown": breakdown,
-            "signals_count": signals_count,
-            "top_signal": top_signal,
-            "preview": redacted_preview,
-            "source_host": host or "manual-paste",
-            "channel": channel or "popup",
-            "scanned_at": scanned_at,
-        }
-    )
+    RECENT_REPORTS.appendleft({
+        "id": f"{text_hash}-{len(RECENT_REPORTS) + 1}",
+        "text_hash": text_hash,
+        "risk_score": result_score,
+        "verdict": verdict,
+        "attack_vector": attack_vector,
+        "breakdown": breakdown,
+        "signals_count": signals_count,
+        "top_signal": top_signal,
+        "preview": redacted_preview,
+        "source_host": host or "manual-paste",
+        "channel": channel or "popup",
+        "scanned_at": scanned_at,
+    })
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -136,7 +123,7 @@ def demo_inbox() -> HTMLResponse:
 
 
 @app.get("/health")
-def health_check() -> dict[str, str]:
+def health_check() -> dict:
     return {"status": "ok", "service": "phishguard-ai", "mode": "real-time-detection"}
 
 
@@ -145,28 +132,13 @@ def scan_text(payload: ScanRequest) -> ScanResponse:
     result = analyze_message(payload.text, source_url=payload.source_url)
     scanned_at = datetime.now(timezone.utc).isoformat()
     top_signal = result.signals[0].label if result.signals else None
-
-    _record_report(
-        result_score=result.risk_score,
-        verdict=result.verdict,
-        attack_vector=result.attack_vector,
-        breakdown=result.breakdown,
-        signals_count=len(result.signals),
-        top_signal=top_signal,
-        redacted_preview=result.redacted_preview,
-        text_hash=result.text_hash,
-        source_url=payload.source_url,
-        channel=payload.channel,
-        scanned_at=scanned_at,
-    )
-
+    _record_report(result.risk_score, result.verdict, result.attack_vector, result.breakdown,
+                   len(result.signals), top_signal, result.redacted_preview, result.text_hash,
+                   payload.source_url, payload.channel, scanned_at)
     return ScanResponse(
-        risk_score=result.risk_score,
-        verdict=result.verdict,
-        attack_vector=result.attack_vector,
-        recommended_action=result.recommended_action,
-        summary=result.summary,
-        breakdown=result.breakdown,
+        risk_score=result.risk_score, verdict=result.verdict,
+        attack_vector=result.attack_vector, recommended_action=result.recommended_action,
+        summary=result.summary, breakdown=result.breakdown,
         signals=[SignalOut(**sig.to_dict()) for sig in result.signals],
         matched_phrases=result.matched_phrases,
         inspected_links=[InspectedLinkOut(**lk.to_dict()) for lk in result.inspected_links],
@@ -178,37 +150,18 @@ def scan_text(payload: ScanRequest) -> ScanResponse:
 def scan_batch(payload: BatchScanRequest) -> list[BatchScanResult]:
     scanned_at = datetime.now(timezone.utc).isoformat()
     responses: list[BatchScanResult] = []
-
     for item in payload.items:
         result = analyze_message(item.text, source_url=payload.source_url)
         top_signal = result.signals[0].label if result.signals else None
         if result.risk_score >= 30:
-            _record_report(
-                result_score=result.risk_score,
-                verdict=result.verdict,
-                attack_vector=result.attack_vector,
-                breakdown=result.breakdown,
-                signals_count=len(result.signals),
-                top_signal=top_signal,
-                redacted_preview=result.redacted_preview,
-                text_hash=result.text_hash,
-                source_url=payload.source_url,
-                channel="on-page",
-                scanned_at=scanned_at,
-            )
-        responses.append(
-            BatchScanResult(
-                id=item.id,
-                risk_score=result.risk_score,
-                verdict=result.verdict,
-                attack_vector=result.attack_vector,
-                recommended_action=result.recommended_action,
-                summary=result.summary,
-                top_signal=top_signal,
-                matched_phrases=result.matched_phrases,
-            )
-        )
-
+            _record_report(result.risk_score, result.verdict, result.attack_vector, result.breakdown,
+                           len(result.signals), top_signal, result.redacted_preview, result.text_hash,
+                           payload.source_url, "on-page", scanned_at)
+        responses.append(BatchScanResult(
+            id=item.id, risk_score=result.risk_score, verdict=result.verdict,
+            attack_vector=result.attack_vector, recommended_action=result.recommended_action,
+            summary=result.summary, top_signal=top_signal, matched_phrases=result.matched_phrases,
+        ))
     return responses
 
 
@@ -216,24 +169,19 @@ def scan_batch(payload: BatchScanRequest) -> list[BatchScanResult]:
 def list_reports() -> dict:
     reports = list(RECENT_REPORTS)
     total = len(reports)
-    high_risk_count = sum(1 for r in reports if r["verdict"] == "high_risk")
-    caution_count = sum(1 for r in reports if r["verdict"] == "caution")
-    safe_count = sum(1 for r in reports if r["verdict"] == "safe")
-    avg_score = round(sum(r["risk_score"] for r in reports) / total) if total else 0
-
     return {
         "stats": {
             "total_scans": total,
-            "high_risk": high_risk_count,
-            "caution": caution_count,
-            "safe": safe_count,
-            "average_risk_score": avg_score,
+            "high_risk": sum(1 for r in reports if r["verdict"] == "high_risk"),
+            "caution": sum(1 for r in reports if r["verdict"] == "caution"),
+            "safe": sum(1 for r in reports if r["verdict"] == "safe"),
+            "average_risk_score": round(sum(r["risk_score"] for r in reports) / total) if total else 0,
         },
         "reports": reports,
     }
 
 
 @app.delete("/reports")
-def clear_reports() -> dict[str, str]:
+def clear_reports() -> dict:
     RECENT_REPORTS.clear()
     return {"status": "cleared"}
